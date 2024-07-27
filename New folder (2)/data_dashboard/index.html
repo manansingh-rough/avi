@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Data Visualization Dashboard</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5">Data Visualization Dashboard</h1>
+
+        <!-- Filters -->
+        <div class="row mb-3">
+            <div class="col">
+                <label for="yearFilter">End Year</label>
+                <select id="yearFilter" class="form-control">
+                    <option value="">All</option>
+                    <!-- Populate with years -->
+                </select>
+            </div>
+            <div class="col">
+                <label for="topicsFilter">Topics</label>
+                <select id="topicsFilter" class="form-control">
+                    <option value="">All</option>
+                    <!-- Populate with topics -->
+                </select>
+            </div>
+            <!-- Add other filters similarly -->
+        </div>
+
+        <!-- Chart -->
+        <div id="chart_div"></div>
+    </div>
+
+    <script type="text/javascript">
+        google.charts.load('current', {'packages':['corechart']});
+        google.charts.setOnLoadCallback(initDashboard);
+
+        function initDashboard() {
+            loadFilters();
+            applyFilters();
+        }
+
+        function fetchData(filters = {}) {
+            let query = Object.keys(filters)
+                .map(key => `${key}=${encodeURIComponent(filters[key])}`)
+                .join('&');
+            return fetch(`api_endpoint.php?${query}`)
+                .then(response => response.json());
+        }
+
+        function updateChart(data) {
+            const chartData = new google.visualization.DataTable();
+            chartData.addColumn('string', 'Year');
+            chartData.addColumn('number', 'Intensity');
+
+            data.forEach(item => {
+                chartData.addRow([item.year.toString(), parseInt(item.intensity)]);
+            });
+
+            const options = {
+                title: 'Intensity over Years',
+                hAxis: {title: 'Year'},
+                vAxis: {title: 'Intensity'},
+                legend: 'none'
+            };
+
+            const chart = new google.visualization.ColumnChart(document.getElementById('chart_div'));
+            chart.draw(chartData, options);
+        }
+
+        function loadFilters() {
+            fetchData().then(data => {
+                const years = [...new Set(data.map(item => item.year))];
+                const topics = [...new Set(data.map(item => item.topics))];
+
+                const yearFilter = document.getElementById('yearFilter');
+                const topicsFilter = document.getElementById('topicsFilter');
+
+                years.forEach(year => {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = year;
+                    yearFilter.appendChild(option);
+                });
+
+                topics.forEach(topic => {
+                    const option = document.createElement('option');
+                    option.value = topic;
+                    option.textContent = topic;
+                    topicsFilter.appendChild(option);
+                });
+
+                yearFilter.addEventListener('change', applyFilters);
+                topicsFilter.addEventListener('change', applyFilters);
+            });
+        }
+
+        function applyFilters() {
+            const filters = {
+                year: document.getElementById('yearFilter').value,
+                topics: document.getElementById('topicsFilter').value
+            };
+
+            fetchData(filters).then(data => {
+                updateChart(data);
+            });
+        }
+    </script>
+</body>
+</html>
